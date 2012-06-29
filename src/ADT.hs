@@ -5,17 +5,16 @@
 --
 module ADT where
 
-import Data.Foldable (Foldable())
 
 
 ----------------------------------------------------------------------
--- UTILITIES: BiFunctor class
+-- UTIdLIdTIdES: IIFunctor class
 ----------------------------------------------------------------------
 
-class BiFunctor f where
-  fmap2   :: (a -> b) -> (t -> u) -> f a t -> f b u
-  fmapFst :: (a -> b) -> f a t -> f b t
-  fmapFst f = fmap2 f id 
+class IIFunctor f where
+  ffmap   :: (a -> b) -> (t -> u) -> f a t -> f b u
+  ffmapL ::  (a -> b) -> f a t -> f b t
+  ffmapL f = ffmap f id 
 
 
 ----------------------------------------------------------------------
@@ -23,109 +22,103 @@ class BiFunctor f where
 ----------------------------------------------------------------------
 
 
--- I
+-- Id
 --
-data I a = I a
+data Id a = Id a
 
-fromI :: (a -> b) -> I a -> b
-fromI f (I x) = f x
+fromId :: (a -> b) -> Id a -> b
+fromId f (Id x) = f x
 
-toI :: (b -> a) -> b -> I a
-toI f x = I (f x)
+toId :: (b -> a) -> b -> Id a
+toId f x = Id (f x)
 
-instance Functor I where
-  fmap f (I x) = I (f x)
+instance Functor Id where
+  fmap f (Id x) = Id (f x)
 
 
--- Unary  =  1 + I    (= Maybe a)
+--   I    =  1 + Id    (= Maybe a)
 --
-data Unary a = UnitU | One a
 
 
-fromU :: b -> (a -> b) -> Unary a -> b
-fromU u f UnitU   = u
-fromU u f (One x) = f x
-
-toU :: (b -> Bool) -> (b -> a) -> (b -> Unary a)
-toU p f x = if p x then UnitU else One (f x) 
-
--- Binary  =  1 + A*I
---
-data Binary a b = UnitB | Two a b
--- Ternary  =  1 + A*I*I
---
-data Ternary a b = UnitT | Three a b b
--- Power = Nary  =  1 + A*[I]
---
-data Power a b = UnitP | Many a [b]
-
-fromB :: t -> (a -> b -> t) -> Binary a b -> t
-fromB u f UnitB     = u
-fromB u f (Two x y) = f x y
-
-toB :: (t -> Bool) -> (t -> a) -> (t -> b) -> t -> Binary a b
-toB p f g x = if p x then UnitB else Two (f x) (g x) 
-
-toB' :: (t -> Bool) -> (t -> (a,b)) -> t -> Binary a b
-toB' p f x = if p x then UnitB else Two y z where (y,z) = f x
-
-instance Functor Unary where       fmap f    UnitU          =                        UnitU
-                                   fmap f    (One x)        = One (f x)
-instance Functor (Binary a) where  fmap f    UnitB          =                        UnitB
-                                   fmap f    (Two x y)      = Two x (f y)
-instance Functor (Ternary a) where fmap f    UnitT          =                        UnitT
-                                   fmap f    (Three x y z)  = Three x (f y) (f z)
-instance BiFunctor Binary    where fmap2 f g UnitB          =                        UnitB
-                                   fmap2 f g (Two x y)      = Two (f x) (g y)
-instance BiFunctor Ternary where   fmap2 f g UnitT          =                        UnitT
-                                   fmap2 f g (Three x y z)  = Three (f x) (g y) (g y)
-
-instance BiFunctor Power where     fmap2 f g UnitP          =                        UnitP
-                                   fmap2 f g (Many x ys)    = Many (f x) (map g ys)
-instance Functor (Power a) where   fmap f    UnitP          =                        UnitP
-                                   fmap f    (Many x ys)    = Many x (map f ys)
+fromU :: t -> (a -> t)           ->   I     a   -> t
+fromB :: t -> (a -> b      -> t) ->   II    a b -> t
+fromT :: t -> (a -> b -> b -> t) ->   IIV   a b -> t
+fromP :: t -> (a -> [b]    -> t) -> Power   a b -> t
 
 
 
-fromT :: t -> (a -> b -> b -> t) -> Ternary a b -> t
-fromT u f UnitT         = u
-fromT u f (Three x y z) = f x y z
+toU  :: (t -> Bool) -> (t -> a)                         -> t ->   I     a
+toB  :: (t -> Bool) -> (t -> a) -> (t -> b)             -> t ->   II    a b
+toT  :: (t -> Bool) -> (t -> a) -> (t -> b) -> (t -> b) -> t ->   IIV   a b
+toP  :: (t -> Bool) -> (t -> a) -> (t -> [b])           -> t -> Power   a b
+toP' :: (t -> Bool) -> (t -> (a,[b]))                   -> t -> Power   a b
+toB' :: (t -> Bool) -> (t -> (a, b ))                   -> t ->   II    a b
 
-toT :: (t -> Bool) -> (t -> a) -> (t -> b) -> (t -> b) -> t -> Ternary a b
-toT p f g h x = if p x then UnitT else Three (f x) (g x) (h x) 
+fromU u f U_U         = u
+fromU u f (I x)       = f x
+fromB u f  U__U        = u
+fromB u f (II x y)     = f x y
+fromT u f  UIIVU        = u
+fromT u f (IIV x y z) = f x y z
+fromP u f  UnitP        = u
+fromP u f (Many x ys)   = f x ys
 
 
+toU  p f     x = if p x then U_U else I     (f x) 
+toB  p f g   x = if p x then U__U else II   (f x) (g x) 
+toT  p f g h x = if p x then UIIVU else IIV (f x) (g x) (h x) 
+toP  p f g   x = if p x then UnitP else Many  (f x) (g x)
+toP' p f     x = if p x then UnitP else Many y zs where (y,zs) = f x
+toB' p f     x = if p x then U__U else II  y z  where (y, z) = f x
+
+data   I     a   = U_U     | I     a
+data   II    a b = U__U    | II    a b
+data   IIV   a b = UIIVU   | IIV   a b b
+data    IV   a b = U_IV_U  | IV    a b b b
+data     V   a b = U__V__U | V     a b b b b
+data Power   a b = UnitP   | Many  a [b]
 
 
-fromP :: t -> (a -> [b] -> t) -> Power a b -> t
-fromP u f UnitP       = u
-fromP u f (Many x ys) = f x ys
+instance Functor    I        where fmap f    U_U            =                       U_U
+                                   fmap f    (I x)          = I (f x)
+instance Functor (  II   a)  where fmap f    U__U           =                       U__U
+                                   fmap f    (II x y)       = II x (f y)
+instance Functor (  IIV   a) where fmap f    UIIVU          =                       UIIVU
+                                   fmap f    (IIV x y z)    = IIV x (f y) (f z)
+instance Functor (  IV    a) where fmap f    U_IV_U        =                        U_IV_U
+                                   fmap f    (IV t x y z)   = IV  t (f x) (f y) (f z)
+instance IIFunctor   II      where ffmap f g U__U           =                        U__U
+                                   ffmap f g (II x y)       = II (f x) (g y)
+instance IIFunctor   IIV     where ffmap f g UIIVU          =                        UIIVU
+                                   ffmap f g (IIV x y z)    = IIV (f x) (g y) (g y)
 
-toP :: (t -> Bool) -> (t -> a) -> (t -> [b]) -> t -> Power a b
-toP p f g x = if p x then UnitP else Many (f x) (g x)
 
-toP' :: (t -> Bool) -> (t -> (a,[b])) -> t -> Power a b
-toP' p f x = if p x then UnitP else Many y zs where (y,zs) = f x
+instance IIFunctor Power     where ffmap f g  UnitP         =                        UnitP
+                                   ffmap f g (Many x ys)    = Many (f x) (fmap g ys)
+instance Functor (Power a)   where fmap  f    UnitP         =                        UnitP
+                                   fmap  f   (Many x ys)    = Many x (fmap f ys)
+
+
 
 
 
 -- natural transformations between functors:
 --
-ntBU :: (a -> b -> c)              -> Binary  a b -> Unary c
-ntTB :: (a -> c) -> (b -> b -> d)  -> Ternary a b -> Binary c d
-ntPB :: (a -> c) -> ([b] -> d)     -> Power   a b -> Binary c d
+ntBU :: (a -> b -> c)              ->   II    a b ->   I   c
+ntTB :: (a -> c) -> (b -> b -> d)  ->   IIV   a b ->   II   c d
+ntPB :: (a -> c) -> ([b] -> d)     -> Power   a b ->   II   c d
 
-ntBU f    UnitB          = UnitU
-ntBU f   (Two   x y  )   = One (f x y)
-ntTB f g  UnitT          = UnitB
-ntTB f g (Three x y z)   = Two (f x) (g y z)
-ntPB f g  UnitP          = UnitB
-ntPB f g (Many  x ys )   = Two (f x) (g ys)
+ntBU f    U__U          = U_U
+ntBU f   (II   x y  )   = I (f x y)
+ntTB f g  UIIVU          = U__U
+ntTB f g (IIV x y z)   = II (f x) (g y z)
+ntPB f g  UnitP          = U__U
+ntPB f g (Many  x ys )   = II (f x) (g ys)
 
 
 
 ----------------------------------------------------------------------
--- REPRESENTATION OF ADTS
+-- REPRESENTATIdON OF ADTS
 ----------------------------------------------------------------------
 
 {-
@@ -148,14 +141,14 @@ des (ADT _ d) = d
 {-
     An ADT whose constructor and destructor map from/to the same type
     is called "symmetric". Thus, for a symmetric ADT: s = g t.
-    Moreover, a symmetric ADT with Binary base functor is called 
+    Moreover, a symmetric ADT with   II   base functor is called 
     a linear ADT. A Join-ADT is a linear ADT with list of values
     to be inserted on the constructor side.
 -}
 
 type SymADT     g  t  = ADT    (g t)    g t
-type BinADT  a     t  = SymADT (Binary a) t
-type JoinADT a  g     = ADT    (Binary [a] (g a)) (Binary a) (g a)
+type BinADT  a     t  = SymADT (  II   a) t
+type JoinADT a  g     = ADT    (  II   [a] (g a)) (  II   a) (g a)
 type PowADT  a     t  = SymADT (Power a) t
 
 
@@ -166,19 +159,19 @@ type PowADT  a     t  = SymADT (Power a) t
 
 -- Equip an ADT having linear constructor with a join view
 --
-joinView :: (Functor g) => ADT (Binary a t) g t -> ADT (Binary [a] t) g t
+joinView :: (Functor g) => ADT (  II   a t) g t -> ADT (  II   [a] t) g t
 joinView (ADT c d) = ADT c' d
-         where c' UnitB        = c UnitB
-               c' (Two xs y) = foldr c'' y xs
-                   where c'' x y = c (Two x y)
+         where c' U__U        = c U__U
+               c' (II xs y) = foldr c'' y xs
+                   where c'' x y = c (II x y)
 
 -- Extend ADT constructors to Maybe types, make ADTs "maybeable"
 --
-maybeView :: (Functor g) => ADT (Binary a t) g t -> ADT (Binary (Maybe a) t) g t
+maybeView :: (Functor g) => ADT (  II   a t) g t -> ADT (  II   (Maybe a) t) g t
 maybeView (ADT c d) = ADT c' d
-          where c' UnitB              = c UnitB
-                c' (Two Nothing y)  = y
-                c' (Two (Just x) y) = c (Two x y)
+          where c' U__U              = c U__U
+                c' (II Nothing y)  = y
+                c' (II (Just x) y) = c (II x y)
 
 
 ----------------------------------------------------------------------
@@ -198,13 +191,15 @@ unfold f a = con a . fmap (unfold f a) . f
 
 -- Hylomorphisms in binary and triplet form (just for completeness)
 --
-hylo :: (Functor f) => (f b -> b) -> (a -> f a) -> (a -> b)
-hylo c d = c . fmap (hylo c d) . d
+hylo  :: (Functor f) => (f b ->   b)                                                 -> (a -> f a) -> (a -> b)
+hylot :: (Functor f) => (f b -> g b) -> (g b ->   b)                                 -> (a -> f a) -> (a -> b)
+hhh   :: (Functor f) => (f b -> i b) -> (i b -> g b) -> (g b ->   b)                 -> (a -> f a) -> (a -> b)
+h     :: (Functor f) => (f b -> i b) -> (i b -> j b) -> (j b -> k b) -> (k b ->   b) -> (a -> f a) -> (a -> b)
 
-
-hylot :: (Functor f) => (f b -> g b) -> (g b -> b) -> (a -> f a) -> (a -> b)
-hylot f c d = c . f . fmap (hylot f c d) . d
-
+hylo    c d = c .             fmap (hylo    c d) . d
+hylot f c d = c . f .         fmap (hylot f c d) . d
+hhh g f c d = c . f . g .     fmap (hhh g f c d) . d
+h i g f c d = c . f . g . i . fmap (h i g f c d) . d
 
 -- ADT transformer
 --

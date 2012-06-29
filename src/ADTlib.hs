@@ -43,33 +43,33 @@ f `o` g = curry (f . (uncurry g))
 -- CONSTRUCTORS AND DESTRUCTORS
 ----------------------------------------------------------------------
 
-cNat :: Unary Int -> Int
+cNat ::   I   Int -> Int
 cNat =  fromU 0 succ
 
-cProd :: Binary Int Int -> Int
+cProd ::   II   Int Int -> Int
 cProd =  fromB 1 (*)
 
-dNat :: Int -> Unary Int
+dNat :: Int ->   I   Int
 dNat =  toU (==0) pred
 
-cList :: Binary a [a] -> [a]
+cList ::   II   a [a] -> [a]
 cList =  fromB [] (:)
 
-dList :: [a] -> Binary a [a]
+dList :: [a] ->   II   a [a]
 dList =  toB null head tail
 
-dPqueue :: Ord a => [a] -> Binary a [a]
-dPqueue xs | null xs   = UnitB
-           | otherwise = Two x (delFst x xs)
+dPqueue :: Ord a => [a] ->   II   a [a]
+dPqueue xs | null xs   = U__U
+           | otherwise = II x (delFst x xs)
                          where x = foldr1 min xs
                                delFst x []                 = []
                                delFst x (y:ys) | y==x      = ys
                                                | otherwise = y:delFst x ys
 
-dPqueueH :: Ord a => H.Heap a -> Binary a (H.Heap a)
+dPqueueH :: Ord a => H.Heap a ->   II   a (H.Heap a)
 dPqueueH = toB' H.isEmpty H.splitMin
 
-type LinGraph a b = Binary (Context a b) (Graph a b)
+type LinGraph a b =   II   (Context a b) (Graph a b)
 cGraph :: LinGraph a b -> Graph a b
 cGraph = fromB empty embed
 
@@ -81,28 +81,28 @@ cGraph = fromB empty embed
 
 -- Number ADTs: nat, count, rng, prod
 --
-nat   :: SymADT Unary Int
+nat   :: SymADT   I   Int
 nat   =  ADT cNat dNat 
 
-evn   :: SymADT Unary Int
+evn   :: SymADT   I   Int
 evn   =  ADT (fromU 0 (succ . succ)) (toU (<=0) (pred . pred))
 
-count :: ADT (Binary a Int) Unary Int
+count :: ADT (  II   a Int)   I   Int
 count =  ADT (fromB 0 (\_ x->succ x)) dNat
 
-rng   :: ADT (Unary Int) (Binary Int) Int
+rng   :: ADT (  I   Int) (  II   Int) Int
 rng   =  ADT cNat (toB (==0) id pred)
 
-rng'  :: ADT () (Binary Int) Int
+rng'  :: ADT () (  II   Int) Int
 rng'  =  ADT (\()->0) (toB (==0) id pred)
 
-prod  :: ADT (Binary Int Int) Unary Int
+prod  :: ADT (  II   Int Int)   I   Int
 prod  =  ADT (fromB 1 (*)) dNat
 
-summ  :: ADT (Binary Int Int) Unary Int
+summ  :: ADT (  II   Int Int)   I   Int
 summ  =  ADT (fromB 0 (+)) dNat
 
-halves :: SymADT Unary Int
+halves :: SymADT   I   Int
 halves =  ADT cNat (toU (==0) (`div` 2))
 
 
@@ -110,7 +110,7 @@ halves =  ADT cNat (toU (==0) (`div` 2))
 --
 type Int2 = (Int,Int)
 
-nat2 :: (Int2->Bool) -> (Int2->Int2) -> ADT () (Binary Int) Int2
+nat2 :: (Int2->Bool) -> (Int2->Int2) -> ADT () (  II   Int) Int2
 nat2 p f = ADT (\_->(0,0)) (toB p fst f)
 
 
@@ -131,8 +131,8 @@ list   =  ADT cList dList
 jList  :: JoinADT a []
 jList  =  joinView list
 
-final  :: ADT (Binary a (Maybe a)) I (Maybe a)
-final  =  ADT (fromB Nothing (Just `o` fromMaybe)) (toI id)
+final  :: ADT (  II   a (Maybe a)) Id (Maybe a)
+final  =  ADT (fromB Nothing (Just `o` fromMaybe)) (toId id)
 
 stack  =  list
 jStack =  jList
@@ -171,14 +171,14 @@ bag =  ADT (fromB M.emptyFM add) (toB' M.isEmptyFM split)
                   where Just (b'',(x,c)) = M.splitMinFM b
                         b' = if c==1 then b'' else M.addToFM b'' x (c-1)
 
-tree :: SymADT (Ternary a) (Tree a) 
+tree :: SymADT (IIV a) (Tree a) 
 tree =  ADT (fromT Leaf Branch) (toT isLeaf key left right) 
 
-fork :: Ord a => ADT (Binary a [a]) (Ternary [a]) [a]
+fork :: Ord a => ADT (  II   a [a]) (IIV [a]) [a]
 fork =  ADT cList (toT null (sel (==)) (sel (<)) (sel (>)))
         where sel f l@(x:_) = filter (flip f x) l
 
-combine :: ADT (Ternary [a] [a]) (Binary a) [a]
+combine :: ADT (IIV [a] [a]) (  II   a) [a]
 combine =  ADT (fromT [] append213) dList
            where append213 y x z = x ++ y ++ z
 
@@ -201,8 +201,8 @@ kids (Nd _ rs) = rs
 --forest' :: PowADT a (Rose a)
 forest' =  ADT (fromP Null Nd) (toP' isNull cut)
 
---forest :: ADT (I [Rose a]) (Binary [a]) [Rose a]
-forest =  ADT (fromI id) (toB null (map root) (concat.map kids))
+--forest :: ADT (I [Rose a]) (  II   [a]) [Rose a]
+forest =  ADT (fromId id) (toB null (map root) (concat.map kids))
 
 
 -- graph ADTs
@@ -211,12 +211,12 @@ graph :: BinADT (Context a b) (Graph a b)
 graph = ADT cGraph (toB' isEmpty matchAny)
 
 bufGraph :: (JoinADT c f) -> (c -> Node) -> (c -> Context a b -> [c]) ->
-            ADT () (Binary (MContext a b)) (f c,Graph a b)
-bufGraph (ADT c d) f h = ADT (\_->(c UnitB,empty)) explore
+            ADT () (  II   (MContext a b)) (f c,Graph a b)
+bufGraph (ADT c d) f h = ADT (\_->(c U__U,empty)) explore
          where explore (b,g) = case d b of
-                 UnitB                  -> UnitB
-                 Two x b' | isEmpty g -> UnitB
-                            | otherwise -> Two ctx (c (Two s b'),g')
+                 U__U                  -> U__U
+                 II x b' | isEmpty g -> U__U
+                            | otherwise -> II ctx (c (II s b'),g')
                               where (ctx,g') = match (f x) g
                                     s        = maybe [] (h x) ctx
 

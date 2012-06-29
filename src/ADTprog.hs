@@ -66,9 +66,9 @@ gcd'   = transit (nat2 eq0' (imod /\ fst))  final
 ----------------------------------------------------------------------
 
 length1 = trans p2 list nat
-          where p2 UnitB       = UnitU
-                p2 (Two _ y) = One y
-                -- p2 : natural transformation from Binary to Unary
+          where p2 (U__U   ) = U_U
+                p2 ( II _ y) =  I  y
+                -- p2 : natural transformation from II to Unary
 length2 = trans (ntBU (\_ y->y)) list nat
 length3 = transit list count          
 
@@ -79,18 +79,18 @@ size a = transit a count
 -- length = size list
 -- card   = size set
 
-mapset f = trans (fmapFst f) set set
+mapset f = trans (ffmapL f) set set
 
 quicksort :: Ord a => [a] -> [a]
 quicksort =  transit fork combine
 
-any2 p = trans (fmapFst p) list bool      -- take set if p is expensive!
+any2 p = trans (ffmapL p) list bool      -- take set if p is expensive!
 
-all2 p = trans (fmapFst p) list boolAnd   -- take set if p is expensive!
+all2 p = trans (ffmapL p) list boolAnd   -- take set if p is expensive!
 
 histogram :: Ord a => [a] -> M.FiniteMap a Int
 histogram = trans once list (arr (+))
-            where once = fmapFst (\n->(n,1))
+            where once = ffmapL (\n->(n,1))
  
 
 ----------------------------------------------------------------------
@@ -102,12 +102,12 @@ flipTree = transit flip tree
 
 preorder = trans (ntTB id (++)) tree list
 -- preorder = trans klr tree list
---            where klr UnitT         = UnitB
---                  klr (Three x y z) = Two x (y++z)
---            -- klr : natural transformation from Ternary to Binary
+--            where klr UnitT         = U__U
+--                  klr (Three x y z) = II x (y++z)
+--            -- klr : natural transformation from Ternary to II
 --            -- (see length1)
 
-tree' :: (Tree a->t) -> (Tree a->Tree a) -> ADT () (Binary t) (Tree a)
+tree' :: (Tree a->t) -> (Tree a->Tree a) -> ADT () (II t) (Tree a)
 tree' f g = ADT (\_->Leaf) (toB isLeaf f g)
 
 binSearch :: Ord a => a -> Tree a -> Bool
@@ -139,28 +139,28 @@ build = transit list graph
 -- "simple" transformers using unordered graph decomposition
 --
 nodes :: Graph a b -> [Node]
-nodes = trans (fmapFst q2) graph list
+nodes = trans (ffmapL q2) graph list
 
 labNodes :: Graph a b -> [(Node,a)]
-labNodes = trans (fmapFst q23) graph list
+labNodes = trans (ffmapL q23) graph list
 
 member :: Node -> Graph a b -> Bool
-member v = trans (fmapFst ((v==).q2)) graph bool
+member v = trans (ffmapL ((v==).q2)) graph bool
 
 noEdges :: Graph a b -> Int
-noEdges = trans (fmapFst noNeighbors) graph summ
+noEdges = trans (ffmapL noNeighbors) graph summ
           where noNeighbors (p,_,_,s) = length p+length s
 
 edges :: Graph a b -> [(Node,Node)]
-edges = concat . trans (fmapFst incident) graph list
+edges = concat . trans (ffmapL incident) graph list
         where incident (p,v,_,s) = [(w,v) | (_,w) <- p]++[(v,w) | (_,w) <- s] 
 
 labEdges :: Graph a b -> [(Node,Node,b)]
-labEdges = concat . trans (fmapFst incident) graph list
+labEdges = concat . trans (ffmapL incident) graph list
            where incident (p,v,_,s) = [(w,v,l) | (l,w)<-p]++[(v,w,l) | (l,w)<-s] 
 
 gmap :: (Context a b -> Context c d) -> Graph a b -> Graph c d
-gmap f = trans (fmapFst f) graph graph
+gmap f = trans (ffmapL f) graph graph
 
 mapNodes :: (a -> a') -> Graph a b -> Graph a' b
 mapNodes f = gmap (label f) where label f (p,v,l,s) = (p,v,f l,s)
@@ -176,8 +176,8 @@ grev = gmap swap where swap (p,v,l,s) = (s,v,l,p)
 -- "buffered" transformers using indexed graph decomposition
 --
 mlist  = maybeView list
-nodeId :: Binary (MContext a b) c -> Binary (Maybe Node) c
-nodeId = fmapFst (fmap q2)
+nodeId :: II (MContext a b) c -> II (Maybe Node) c
+nodeId = ffmapL (fmap q2)
 
 sucs _ (_,_,_,s) = fmap snd s
 
