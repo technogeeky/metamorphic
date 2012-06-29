@@ -225,7 +225,7 @@ via :: (
        ADT s g t -> ADT (g u) h u -> ADT (h v) i v -> t -> v
 via a b c = transit b c . transit a b
 
-stream :: (Functor g, g ~ []) => [SymADT g t] -> t -> t
+stream :: (Functor g) => [SymADT g t] -> t -> t
 stream [a,b]    = transit a b
 stream (a:b:as) = stream (b:as) . (transit a b) 
 
