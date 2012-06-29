@@ -1,0 +1,39 @@
+CONTENTS
+
+Apart form this README file, the distribution contains nine Haskell files.
+
+(A) These files define the "metamorphic programming" extension to Haskell:
+
+  ADT.hs      --  Functor defs, ADT, fold & transform
+  ADTlib.hs   --  A library of constructors and ADTs
+  ADTprog.hs  --  Example programs
+  
+(B) For some examples the following data structures are needed:
+
+  Tree.hs       --  Just a binary tree definition
+  Graph.hs      --  Inductive graph type (see IFL97 or ICFP97 paper)
+  GraphData.hs  --  Some example graphs
+  Heap.hs       --  Pairing heaps 
+  SimpleMap.hs  --  Binary search tree implementation of maps 
+  Thread.hs     --  Auxiliary module used in Graph (subject to future change)
+  
+(From the Haskell library we use the module Maybe and List. Thus, you should
+take care that these modules can be found by hugs.)
+ 
+
+
+INSTALLATION
+
+Copy all files to a directory where hugs or ghc can find them.
+(I tested the programs with Hugs 1.4, June 1998.)
+Start hugs and load "ADTprog.hs".
+
+
+
+CONTACT
+
+Please email comments, bugs, etc. to erwig@fernuni-hagen.de.
+
+
+--
+Martin
