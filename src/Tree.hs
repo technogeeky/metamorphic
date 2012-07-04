@@ -18,3 +18,6 @@ instance Show a => Show (Tree a) where
 
 isLeaf Leaf = True
 isLeaf _    = False
+
+
+-- http://blog.moertel.com/articles/2012/01/26/the-inner-beauty-of-tree-traversals

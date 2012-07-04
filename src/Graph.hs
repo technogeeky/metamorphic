@@ -98,17 +98,18 @@ fth4 (_,_,_,x) = x
 -- MAIN FUNCTIONS
 ----------------------------------------------------------------------
 
-empty :: Graph a b 
+empty ::                             Graph a b 
+embed :: Context a b -> Graph a b -> Graph a b 
+match ::                     Node -> Graph a b -> Decomp a b
+
 empty =  Graph emptyFM
 
-embed :: Context a b -> Graph a b -> Graph a b 
 embed (pre,v,l,suc) (Graph g) | elemFM g v = error ("Node Exception, Node: "++show v)
                               | otherwise  = Graph g3
       where g1 = addToFM g v (pre,l,suc)
             g2 = updAdj g1 pre (addSucc v)
             g3 = updAdj g2 suc (addPred v)         
       
-match :: Node -> Graph a b -> Decomp a b
 match v (Graph g) = 
       case splitFM g v of 
            Nothing -> (Nothing,Graph g)
@@ -119,6 +120,13 @@ match v (Graph g) =
                       g2   = updAdj g1 pre' (clearSucc v)
 
 
+matchAny  ::                                     Graph a b -> (Context a b,Graph a b)
+isEmpty   ::  Graph a b         -> Bool
+matchSome :: (Graph a b -> Node -> Bool)      -> Graph a b -> (Context a b,Graph a b)
+matchThe  :: (Graph a b -> Node -> Bool)      -> Graph a b -> (Context a b,Graph a b)
+context   ::                            Node  -> Graph a b ->  Context a b
+(\\)      ::  Graph a b             -> [Node] -> Graph a b
+
 -- derived/specialized observers
 --
 -- match      matches a specified node
@@ -126,33 +134,27 @@ match v (Graph g) =
 -- matchSome  matches any node with a specified property
 -- matchThe   matches a node if it is uniquely characterized by the given property
 --
-isEmpty :: Graph a b -> Bool
 isEmpty (Graph g) = case g of {Empty -> True; _ -> False}
 
-matchAny :: Graph a b -> (Context a b,Graph a b)
 matchAny (Graph Empty)              = error "Match Exception, Empty Graph"
 matchAny g@(Graph (Node _ (v,_) _)) = (c,g') where (Just c,g') = match v g
 
-matchSome :: (Graph a b -> Node -> Bool) -> Graph a b -> (Context a b,Graph a b)
 matchSome _ (Graph Empty) = error "Match Exception, Empty Graph"
 matchSome p g = case filter (p g) (nodes g) of
                   []      ->  error "Match Exception, no such node found"
                   (v:vs)  ->  (c,g') where (Just c,g') = match v g
 
-matchThe :: (Graph a b-> Node -> Bool) -> Graph a b -> (Context a b,Graph a b)
 matchThe _ (Graph Empty) = error "Match Exception, Empty Graph"
 matchThe p g = case filter (p g) (nodes g) of
                   []   ->  error "Match Exception, no such node found"
                   [v]  ->  (c,g') where (Just c,g') = match v g
                   _    ->  error "Match Exception, more than one node found"
 
-context :: Node -> Graph a b -> Context a b
 context v (Graph g) = 
         case lookupFM g v of 
              Nothing            -> error ("Match Exception, Node: "++show v)
              Just (pre,lab,suc) -> (filter ((/=v).snd) pre,v,lab,suc)
 
-(\\) :: Graph a b -> [Node] -> Graph a b
 g \\ []     = g
 g \\ (v:vs) = snd (match v g) \\ vs
 
@@ -165,30 +167,31 @@ context3 v g = thd4 (context v g)
 context4 v g = fth4 (context v g)
 
 
+suc       :: Graph a b -> Node -> [Node]
+pre       :: Graph a b -> Node -> [Node] 
+neighbors :: Graph a b -> Node -> [Node] 
+out       :: Graph a b -> Node -> [Edge b] 
+inn       :: Graph a b -> Node -> [Edge b] 
+indeg     :: Graph a b -> Node -> Int
+outdeg    :: Graph a b -> Node -> Int
+deg       :: Graph a b -> Node -> Int
+
 -- informations derived from specific contexts
 --
-suc :: Graph a b -> Node -> [Node]
 suc g v = map snd (context4 v g)
 
-pre :: Graph a b -> Node -> [Node] 
 pre g v = map snd (context1 v g)
 
-neighbors :: Graph a b -> Node -> [Node] 
 neighbors g v = (\(p,_,_,s) -> map snd (p++s)) (context v g)
 
-out :: Graph a b -> Node -> [Edge b] 
 out g v = map (\(l,w)->(v,w,l)) (context4 v g)
 
-inn :: Graph a b -> Node -> [Edge b] 
 inn g v = map (\(l,w)->(w,v,l)) (context1 v g)
 
-indeg :: Graph a b -> Node -> Int
 indeg g v = length (context1 v g)
 
-outdeg :: Graph a b -> Node -> Int
 outdeg g v = length (context4 v g)
 
-deg :: Graph a b -> Node -> Int
 deg g v = (\(p,_,_,s) -> length p+length s) (context v g)
 
 
@@ -207,32 +210,32 @@ node'    (_,v,_,_) = v
 lab'     (_,_,l,_) = l
 labNode' (_,v,l,_) = (v,l)
 
+noNodes :: Graph a b -> Int
+nodeRange :: Graph a b -> (Node,Node)
+nodes :: Graph a b -> [Node]
+labNodes :: Graph a b -> [(Node,a)]
+
+ufold :: ((Context a b) -> c -> c) -> c -> Graph a b -> c
+labEdges :: Graph a b -> [Edge b]
+
 
 -- gobal projections/selections
 --
-noNodes :: Graph a b -> Int
-noNodes (Graph g) = sizeFM g
-
-nodeRange :: Graph a b -> (Node,Node)
+noNodes (Graph g)       = sizeFM g
 nodeRange (Graph Empty) = (0,-1)
 nodeRange (Graph g)     = (ix (minFM g),ix (maxFM g)) where ix = fst.fromJust
 
-nodes :: Graph a b -> [Node]
 nodes (Graph g) = (map fst (fmToList g))
 
-labNodes :: Graph a b -> [(Node,a)]
 labNodes (Graph g) = map (\(v,(_,l,_))->(v,l)) (fmToList g)
 
-edges :: Graph a b -> [(Node,Node)]
 edges (Graph g) = concatMap (\(v,(_,_,s))->map (\(_,w)->(v,w)) s) (fmToList g)
 
-labEdges :: Graph a b -> [Edge b]
 labEdges (Graph g) = concatMap (\(v,(_,_,s))->map (\(l,w)->(v,w,l)) s) (fmToList g)
 
 
 -- graph folds
 --
-ufold :: ((Context a b) -> c -> c) -> c -> Graph a b -> c
 ufold f u (Graph Empty) = u
 ufold f u g             = f c (ufold f u g') where (c,g') = matchAny g
 
@@ -259,15 +262,23 @@ type Dagg a b c d = (Context a b) -> c -> d  -- depth aggregation
 type Bagg a b     = (Maybe a -> b -> b,b)    -- breadth/level aggregation
 
 gfold :: (Dir a b) -> (Dagg a b c d) -> (Bagg d c) -> [Node] -> Graph a b -> c
+gmap :: (Context a b -> Context a b) -> Graph a b -> Graph a b
+undir :: Graph a () -> Graph a ()
+newNodes :: Int -> Graph a b -> [Node]
+insNode :: Graph a b -> (Node,a) -> Graph a b
+insNodes :: Graph a b -> [(Node,a)] -> Graph a b
+insEdge :: Graph a b -> (Node,Node,b) -> Graph a b
+insEdges :: Graph a b -> [(Node,Node,b)] -> Graph a b
+mkGraph :: [(Node,a)] -> [(Node,Node,b)] -> Graph a b
+buildGr :: [Context a b] -> Graph a b
+
 gfold f d b l g = fst (gfoldn f d b l g)
 
 
 -- graph transformations
 --
-gmap :: (Context a b -> Context a b) -> Graph a b -> Graph a b
 gmap f = ufold (\c g->embed (f c) g) empty
 
-undir :: Graph a () -> Graph a ()
 undir = gmap (\(p,v,l,s)->let ps = nub (p++s) in (ps,v,l,ps))
               
 -- undirBy :: (b -> b -> b) -> Graph a b -> Graph a b
@@ -276,24 +287,17 @@ undir = gmap (\(p,v,l,s)->let ps = nub (p++s) in (ps,v,l,ps))
 
 -- some utilities to build graphs
 --
-newNodes :: Int -> Graph a b -> [Node]
 newNodes i g = [n..n+i] where n = 1+foldr max 0 (nodes g)
 
-insNode :: Graph a b -> (Node,a) -> Graph a b
 insNode g (v,l) = embed ([],v,l,[]) g
 
-insNodes :: Graph a b -> [(Node,a)] -> Graph a b
 insNodes g vs = foldr (flip insNode) g vs 
 
-insEdge :: Graph a b -> (Node,Node,b) -> Graph a b
 insEdge g (v,w,l) = embed (pre,v,lab,(l,w):suc) g'
                     where (Just (pre,_,lab,suc),g') = match v g
 
-insEdges :: Graph a b -> [(Node,Node,b)] -> Graph a b
 insEdges g es = foldr (flip insEdge) g es
                   
-mkGraph :: [(Node,a)] -> [(Node,Node,b)] -> Graph a b
 mkGraph vs es = insEdges (insNodes empty vs) es 
 
-buildGr :: [Context a b] -> Graph a b
 buildGr = foldr embed empty
