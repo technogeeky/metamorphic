@@ -1,7 +1,20 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  GraphData
+-- Copyright   :  (C) 2012 Drew Day
+--             :  (C) 1999 Martin Erwig
+-- License     :  BSD-style (see the file LICENSE)
 --
---  GraphData.hs -- Example Graphs 
+-- Maintainer  :  Drew Day <drewday@gmail.com>
+-- Stability   :  experimental
+-- Portability :  portable
+-- 
+-- Code adapted from: 
+-- <http://web.engr.oregonstate.edu/~erwig/meta/>
 --
---
+-- Documentation (and further updates in technique) forthcoming.
+----------------------------------------------------------------------------
+
 module GraphData (
    -- example graphs
    a,b,c,e,ab,loop,cyc3,dag3,dag4,

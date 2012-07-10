@@ -1,6 +1,20 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Tree
+-- Copyright   :  (C) 2012 Drew Day
+--             :  (C) 1999 Martin Erwig
+-- License     :  BSD-style (see the file LICENSE)
 --
---  Tree.hs -- Definition of binary tree data type
+-- Maintainer  :  Drew Day <drewday@gmail.com>
+-- Stability   :  experimental
+-- Portability :  portable
+-- 
+-- Code adapted from: 
+-- <http://web.engr.oregonstate.edu/~erwig/meta/>
 --
+-- Documentation (and further updates in technique) forthcoming.
+----------------------------------------------------------------------------
+
 module Tree 
 where
 

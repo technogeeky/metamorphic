@@ -1,6 +1,21 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Thread
+-- Copyright   :  (C) 2012 Drew Day
+--             :  (C) 1999 Martin Erwig
+-- License     :  BSD-style (see the file LICENSE)
 --
---  Thread.hs -- Threading Combinators  (c) 1999 by Martin Erwig
+-- Maintainer  :  Drew Day <drewday@gmail.com>
+-- Stability   :  experimental
+-- Portability :  portable
+-- 
+-- Code adapted from: 
+-- <http://web.engr.oregonstate.edu/~erwig/meta/>
 --
+-- Documentation (and further updates in technique) forthcoming.
+----------------------------------------------------------------------------
+
+
 module Thread where
 
 -- import Graph
@@ -66,9 +81,10 @@ foldT2 f u xs d = foldT2' f u xs d
 --  r : result type
 --  c : collection type
 --
-type Split t i r  = i -> t -> (r,t)
-type Thread t i r = (t,Split t i r)
-type Collect r c  = (r -> c -> c,c)
+type Split  t i r    = i -> t -> (r,t)
+type Thread t i r    = (t,Split t i r)
+                          -- ^  i -> t -> (r,t)
+type Collect    r c  = (r -> c -> c,c)
 
 --  (3) abstract from split
 -- 

@@ -1,6 +1,20 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Alib
+-- Copyright   :  (C) 2012 Drew Day
+--             :  (C) 1999 Martin Erwig
+-- License     :  BSD-style (see the file LICENSE)
 --
---  Alib.hs -- A Library of As
+-- Maintainer  :  Drew Day <drewday@gmail.com>
+-- Stability   :  experimental
+-- Portability :  portable
+-- 
+-- Code adapted from: 
+-- <http://web.engr.oregonstate.edu/~erwig/meta/>
 --
+-- Documentation (and further updates in technique) forthcoming.
+----------------------------------------------------------------------------
+
 module Alib where
 
 import Data.Maybe (fromMaybe)
@@ -12,53 +26,25 @@ import Graph (Graph,Context,MContext,Node,
               empty,embed,isEmpty,match,matchAny)
 import qualified Heap as H
 import qualified SimpleMap as M
--- import Geo
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- * Constructors (Emitters) and Destructors (Absorbers) -- Functions
+-----------------------------------------------------------------------------------------------------------------------------
+
+cNat      =  fromU      0   succ
+dNat      =    toU   (==0)  pred
+cList     =  fromB     []        (:)
+dList     =    toB    null  head     tail
 
 
-----------------------------------------------------------------------
--- SOME UTILITIES
-----------------------------------------------------------------------
+cRose     = undefined
+dRose     = undefined
 
-infixr 8 ><
-infixr 8 /\
+cProd     =  fromB  (1)   (*)
+dProd     =  undefined
 
+dPqueueH  = toB' H.isEmpty H.splitMin
 
--- some operations for tuples
---
-(f >< g) (x,y) = (f x,g y)
-(f /\ g)  x    = (f x,g x)
-
-q1  (a,_,_,_) = a
-q2  (_,b,_,_) = b
-q23 (_,b,c,_) = (b,c)
-q4  (_,_,_,d) = d
-
-
--- curried composition
---
-f `o` g = curry (f . (uncurry g))
-
-
-----------------------------------------------------------------------
--- CONSTRUCTORS AND DESTRUCTORS
-----------------------------------------------------------------------
-
-cNat ::   I   Int -> Int
-cNat =  fromU 0 succ
-
-cProd ::   II   Int Int -> Int
-cProd =  fromB 1 (*)
-
-dNat :: Int ->   I   Int
-dNat =  toU (==0) pred
-
-cList ::   II   a [a] -> [a]
-cList =  fromB [] (:)
-
-dList :: [a] ->   II   a [a]
-dList =  toB null head tail
-
-dPqueue :: Ord a => [a] ->   II   a [a]
 dPqueue xs | null xs   = UII_U
            | otherwise = II x (delFst x xs)
                          where x = foldr1 min xs
@@ -66,166 +52,247 @@ dPqueue xs | null xs   = UII_U
                                delFst x (y:ys) | y==x      = ys
                                                | otherwise = y:delFst x ys
 
-dPqueueH :: Ord a => H.Heap a ->   II   a (H.Heap a)
-dPqueueH = toB' H.isEmpty H.splitMin
-
-type LinGraph a b =   II   (Context a b) (Graph a b)
-cGraph :: LinGraph a b -> Graph a b
-cGraph = fromB empty embed
 
 
-----------------------------------------------------------------------
--- EXAMPLE AS
-----------------------------------------------------------------------
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- Simple (non-parametric) ADTs
+-----------------------------------------------------------------------------------------------------------------------------
+
+nat       :: SymA     I                        Int
+evn       :: SymA     I                        Int
+halves    :: SymA     I                        Int
+nat2      ::                                           (IxI -> Bool)  -> (IxI -> IxI)  
+             -> A  (            )  ( II   Int) IxI
+rng       ::    A  (  I      Int)  ( II   Int) Int
+rng'      ::    A  (            )  ( II   Int) Int
+count     ::    A  ( II   a  Int)     I   Int
+prod      ::    A  ( II  Int Int)     I   Int
+summ      ::    A  ( II  Int Int)     I   Int
+bool      :: BinA        Bool         Bool
+boolAnd   :: BinA        Bool         Bool
 
 
--- Number As: nat, count, rng, prod
---
-nat   :: SymA   I   Int
-nat   =  A cNat dNat 
-
-evn   :: SymA   I   Int
-evn   =  A (fromU 0 (succ . succ)) (toU (<=0) (pred . pred))
-
-count :: A (  II   a Int)   I   Int
-count =  A (fromB 0 (\_ x->succ x)) dNat
-
-rng   :: A (  I   Int) (  II   Int) Int
-rng   =  A cNat (toB (==0) id pred)
-
-rng'  :: A () (  II   Int) Int
-rng'  =  A (\()->0) (toB (==0) id pred)
-
-prod  :: A (  II   Int Int)   I   Int
-prod  =  A (fromB 1 (*)) dNat
-
-summ  :: A (  II   Int Int)   I   Int
-summ  =  A (fromB 0 (+)) dNat
-
-halves :: SymA   I   Int
-halves =  A cNat (toU (==0) (`div` 2))
+nat       =  A cNat                                 dNat 
+evn       =  A        (fromU 0 (succ . succ))             (toU (<=0) (pred . pred))
+halves    =  A cNat                                       (toU (==0) (`div` 2)    )
+rng       =  A cNat                                       (toB (==0) id pred)
+rng'      =  A        (\()->   0  )                       (toB (==0) id pred)
+nat2  p f =  A        (\_ -> (0,0))                       (toB   p   fst f)
+count     =  A        (fromB 0 (\_ x -> succ x))    dNat
+prod      =  A        (fromB 1 (*)             )    dNat
+summ      =  A        (fromB 0 (+)             )    dNat
+graph     =  A cGraph                                     (toB' isEmpty matchAny)
+bool      =  A        (fromB False (||))                  (toB' not (\_ -> (True,False)) )
+boolAnd   =  A        (fromB True  (&&))                  (toB' id  (\_ -> (True,True )) )
 
 
--- "pair" A: nat x nat
---
-type Int2 = (Int,Int)
+-----------------------------------------------------------------------------------------------------------------------------
+-- * Familar Data Structures
+-----------------------------------------------------------------------------------------------------------------------------
 
-nat2 :: (Int2->Bool) -> (Int2->Int2) -> A () (  II   Int) Int2
-nat2 p f = A (\_->(0,0)) (toB p fst f)
+set       :: (Num a, Eq a)          =>  BinA       a               [a]
+list      ::                            BinA       a               [a]
+queue     ::                            BinA       a               [a]
+pqueue    :: Ord a                  =>  BinA       a               [a]
+pqueueH   :: Ord a                  =>  BinA       a        (H.Heap a)
+jPqueueH  :: Ord a                  => JoinA       a         H.Heap
+jQueue    ::                           JoinA       a               [ ]
+jList     ::                           JoinA       a               [ ]
+jPqueue   :: Ord a                  => JoinA       a               [ ]
+bag       :: Ord a                  =>  BinA       a   (M.FiniteMap a   Int )
+arr       :: Ord i => (a -> a -> a) ->  BinA   (i ,a)  (M.FiniteMap i    a  )
+fork      :: Ord a                  =>     A (II        a        [a])  (IIV     [a] )         [a]
+final     ::                               A (II        a  (Maybe a))  (Id          )   (Maybe a)
+combine   ::                               A (IIV      [a]       [a])  (II       a  )         [a]
+tree      ::                            SymA (IIV       a           )  (Tree     a  ) 
+rose      ::                            SymA (Power     a           )  (Rose     a  )
+graph     ::                            BinA (Context   a     b     )  (Graph    a b)
+type                   LinGraph a b =   II   (Context   a     b     )  (Graph    a b)
+cGraph    ::           LinGraph a b ->                                  Graph    a b
 
 
--- Misc. simple As
---
-bool  :: BinA Bool Bool
-bool  =  A (fromB False (||)) (toB' not (\_->(True,False)))
-
-boolAnd :: BinA Bool Bool
-boolAnd =  A (fromB True (&&)) (toB' id (\_->(True,True)))
 
 
--- Collection As
---
---list   :: BinA a [a]
-list   =  A cList dList
+-----------------------------------------------------------------------------------------------------------------------------------
+-- * 22 data structures in 22 lines
+-----------------------------------------------------------------------------------------------------------------------------
+list      =  A cList                                         dList
+rose      =  A cRose                                         dRose
+pqueue    =  A cList                                         dPqueue
+set       =  A cList (toB     null  head rest)
+queue     =  A cList (toB     null  last init)
+pqueueH   =  A       (fromB   H.Empty   H.insert           ) dPqueueH
+final     =  A       (fromB   Nothing  (Just `o` fromMaybe))          (toId id)
+tree      =  A       (fromT   Leaf      Branch             )          (toT isLeaf key left right) 
+fork      =  A cList                                                  (toT null (sel (==)) (sel (<)) (sel (>)))
+combine   =  A       (fromT    []        append213 )          dList 
+arr     f =  A       (fromB   M.emptyFM (accum f)  )                  (toB' M.isEmptyFM split_arr)
+bag       =  A       (fromB   M.emptyFM  add       )                  (toB' M.isEmptyFM split_bag)
+forest'   =  A       (fromP   Null Nd)                                (toP' isNull  cut                        )
+forest    =  A       (fromId      id)                                 (toB  null   (map root) (concat.map kids))
+cGraph =              fromB    empty                          embed
 
-jList  :: JoinA a []
-jList  =  joinView list
 
-final  :: A (  II   a (Maybe a)) Id (Maybe a)
-final  =  A (fromB Nothing (Just `o` fromMaybe)) (toId id)
-
-stack  =  list
-jStack =  jList
-
-queue  :: BinA a [a]
-queue  =  A cList (toB null last init)
-
-pqueue :: Ord a => BinA a [a]
-pqueue =  A cList dPqueue
-
-pqueueH :: Ord a => BinA a (H.Heap a)
-pqueueH =  A (fromB H.Empty H.insert) dPqueueH
-
-jQueue :: JoinA a []
-jQueue =  joinView queue
-                   
-jPqueue :: Ord a => JoinA a []
-jPqueue =  joinView pqueue
-
-jPqueueH :: Ord a => JoinA a H.Heap
-jPqueueH =  joinView pqueueH
+stack     =           list
+jStack    =          jList
+jList     =  joinView list
+jQueue    =  joinView queue                   
+jPqueue   =  joinView pqueue
+jPqueueH  =  joinView pqueueH
                
-set :: (Num a, Eq a) => BinA a [a]
-set =  A cList (toB null head rest)
-       where rest (x:xs) = filter (/=x) xs
+-----------------------------------------------------------------------------------------------------------------------------
+-- ** Helpers (Selectors, Appends (with swap))
+-----------------------------------------------------------------------------------------------------------------------------
 
-arr :: Ord i => (a -> a -> a) -> BinA (i,a) (M.FiniteMap i a)
-arr f = A (fromB M.emptyFM accum) (toB' M.isEmptyFM split)
-        where accum (i,x) a = M.accumFM a i f x
-              split a = (x,a') where Just (a',x) = M.splitMinFM a
+sel       :: (a -> a -> Bool)      -> [a] -> [a]
+rest      :: (Eq a)                => [a] -> [a]
+append213 ::                          [a] -> [a] -> [a] -> [a]
 
-bag :: Ord a => BinA a (M.FiniteMap a Int)
-bag =  A (fromB M.emptyFM add) (toB' M.isEmptyFM split)
-          where add x b = M.accumFM b x (+) 1
-                split b = (x,b') 
-                  where Just (b'',(x,c)) = M.splitMinFM b
-                        b' = if c==1 then b'' else M.addToFM b'' x (c-1)
-
-tree :: SymA (IIV a) (Tree a) 
-tree =  A (fromT Leaf Branch) (toT isLeaf key left right) 
-
-fork :: Ord a => A (  II   a [a]) (IIV [a]) [a]
-fork =  A cList (toT null (sel (==)) (sel (<)) (sel (>)))
-        where sel f l@(x:_) = filter (flip f x) l
-
-combine :: A (IIV [a] [a]) (  II   a) [a]
-combine =  A (fromT [] append213) dList
-           where append213 y x z = x ++ y ++ z
+sel  f l@(x:_)      = filter (flip f x)  l                                                
+rest     (x:xs)     = filter (/=x)      xs                                                
+append213     y x z = x ++ y ++ z                                                         
 
 
--- As for rose trees
---
-data Rose a = Null | Nd a [Rose a] deriving Show
-type Forest a = [Rose a]
+-----------------------------------------------------------------------------------------------------------------------------
+-- ** Helpers (Accumulation and Splitting)
+-----------------------------------------------------------------------------------------------------------------------------
 
-isNull :: Rose a -> Bool
+accum     :: (Ord o) => (a -> a -> a) -> (o, a) -> M.FiniteMap o a ->         M.FiniteMap o a
+add       :: (Ord o, Num a)        =>     o     -> M.FiniteMap o a ->         M.FiniteMap o a
+split_bag :: (Ord o, Eq a, Num a)  =>              M.FiniteMap o a -> ( o   , M.FiniteMap o a)
+split_arr :: (Ord o)               =>              M.FiniteMap o a -> ((o,a), M.FiniteMap o a)
+
+
+accum  f (i,x) a = M.accumFM  a  i  f   x                                            
+add         x  b = M.accumFM  b  x (+)  1                                            
+
+split_bag  b = 
+               let                                                                   
+                    Just                           (b'', (x ,c)) = M.splitMinFM b
+                    b'   = if (==) c 1 then         b''      
+                         else        M.addToFM      b'' x (c-1)
+               in (x,b') 
+split_arr a =  let  Just  (a',x) = M.splitMinFM a                                    
+               in       (x,a') 
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- * Constructors (Emitters) and Destructors (Absorbers) -- Type Signatures
+-----------------------------------------------------------------------------------------------------------------------------
+
+
+-- |                                                         construct (resp. destroy) a 'I' of Naturals using 'Int's.
+cNat      ::    I       Int   -> Int
+dNat      ::                     Int ->    I           Int
+-- ^                                                         construct (resp. destroy) a 'I'  of Naturals using 'Int's.
+-- |                                                         construct (resp. destroy) a 'II' of @a@s using Lists
+cList     ::   II   a   [a]   -> [a]
+dList     ::                     [a] ->   II  a        [a]
+-- ^                                                         construct (resp. destroy) a 'II' of @a@s using base Lists
+dPqueue   :: Ord a =>            [a] ->   II  a        [a]
+-- ^                                                         destroy priority queue (a 'II' over base Lists)
+dPqueueH  :: Ord a =>      H.Heap a  ->   II  a (H.Heap a)
+-- ^                                                         destroy priority queue heap (a 'II' ('Bifunctor') over 'H.Heap's)
+-- |                                                         construct (resp. destroy) a 'II' of two Naturals using 'Int's.
+cProd     ::   II   Int Int   -> Int
+dProd     ::                     Int ->   II Int       Int
+-- ^                                                         construct (resp. destroy) a 'II' of two Naturals using 'Int's.
+
+type IxI = (Int, Int) -- ^ a simple type for pairs of integers (not used yet!)
+
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- * Rose Trees
+-----------------------------------------------------------------------------------------------------------------------------
+
+data Rose   a = Null | Nd    a   [Rose a] deriving Show
+type Forest a =                  [Rose a]
+
+forest'   ::           PowA  a   (Rose a)
+forest    ::              A (Id  [Rose a] ) 
+                            (II  [     a] ) 
+                                 [Rose a]
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- ** Rose Tree Smart Constructors
+-----------------------------------------------------------------------------------------------------------------------------
+
+isNull    :: Rose a                     -> Bool
+cut       :: Rose a  -> (a,[Rose a])
+root      :: Rose a  ->  a
+kids      :: Rose t     -> [Rose t]
+
 isNull Null = True
-isNull _    = False
+isNull ____ = False
 
-cut :: Rose a -> (a,[Rose a])
-cut (Nd x rs) = (x,rs)
-
-root (Nd x _)  = x
-kids (Nd _ rs) = rs
-
---forest' :: PowA a (Rose a)
-forest' =  A (fromP Null Nd) (toP' isNull cut)
-
---forest :: A (I [Rose a]) (  II   [a]) [Rose a]
-forest =  A (fromId id) (toB null (map root) (concat.map kids))
+cut  (Nd x rs) = (x,rs)   
+root (Nd x __) =  x       
+kids (Nd _ rs) =    rs    
 
 
--- graph As
---
-graph :: BinA (Context a b) (Graph a b)
-graph = A cGraph (toB' isEmpty matchAny)
 
-bufGraph :: (JoinA c f) -> (c -> Node) -> (c -> Context a b -> [c]) ->
-            A () (  II   (MContext a b)) (f c,Graph a b)
-bufGraph (A c d) f h = A (\_->(c UII_U,empty)) explore
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- * Linear Graphs (not really complete)
+-----------------------------------------------------------------------------------------------------------------------------
+
+bufGraph ::  (JoinA  c f) 
+           ->      ( c -> Node) 
+           ->      ( c ->   Context a b    -> [c] ) 
+           -> 
+           A  ()     (II  (MContext a b))   (f c  , Graph a b)
+
+bufGraph (A c d) f h = A (\_ -> (c UII_U,empty)) explore
          where explore (b,g) = case d b of
                  UII_U                  -> UII_U
-                 II x b' | isEmpty g -> UII_U
-                            | otherwise -> II ctx (c (II s b'),g')
-                              where (ctx,g') = match (f x) g
-                                    s        = maybe [] (h x) ctx
+                 II x b'    | isEmpty g -> UII_U
+                            | otherwise ->  II ctx (c (II s b'), g' )
+                              where          ( ctx    ,          g' ) = match (f x) g
+                                             s                        = maybe [] (h x) ctx
 
-{-
-   generalize bufGraph to bufA:
-   then we can do dfs/bfs on trees and graphs!
--}
 
--- Rose Trees
+-----------------------------------------------------------------------------------------------------------------------------
+-- * Utilities
+-----------------------------------------------------------------------------------------------------------------------------
+
+q1  :: ( t, x, y, z) -> t     
+q2  :: ( t, x, y, z) -> x     
+q23 :: ( t, x, y, z) -> (x,y)
+q4  :: ( t, x, y, z) -> z     
+
+q1     ( t, _, _, _) = t
+q2     ( _, x, _, _) = x
+q23    ( _, x, y, _) = (x,y)
+q4     ( _, _, _, z) = z
+
+
+-- uncurrying process:
+--   (\f g ->       (f .          g)  ) :: forall   a b (f :: * -> *). (Functor f) => (a -> b) -> f a -> f b
+--   (\f g ->       (f . (uncurry g)) ) :: forall   a b a1 b1.                        (a -> b) -> (a1 -> b1 -> a) -> (a1,  b1) -> b
+--   (\f g -> curry (f . (uncurry g)) ) :: forall c a b c1.                          (c1 -> c) -> (a  -> b -> c1) ->  a -> b   -> c
+
+-- | curried composition
 --
--- rose :: SymA (Power a) (Rose a)
--- rose = A cRose dRose
+--o      :: forall a f g b. (b -> a) -> (f -> g -> b) -> f -> g -> a
+
+f `o` g = curry (f . (uncurry g))
+
+-----------------------------------------------------------------------------------------------------------------------------
+-- * Extra! (perhaps not needed)
+-----------------------------------------------------------------------------------------------------------------------------
+
+-- Perhaps I'll find use for this later (to shorten Nothing)
+data NoK o = No
+           | OK o
+
+
+infixr 8 ><
+infixr 8 /\
+
+
+(f >< g) (x,y) = (f x,g y)     -- never used here
+(f /\ g)  x    = (f x,g x)     -- never used here
+

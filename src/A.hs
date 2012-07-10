@@ -1,16 +1,37 @@
--- {-# LANGUAGE DatatypeContexts #-}
-
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  A
+-- Copyright   :  (C) 2012 Drew Day
+--             :  (C) 1999 Martin Erwig
+-- License     :  BSD-style (see the file LICENSE)
 --
---  A.hs -- As, A Fold, and A Transformer
+-- Maintainer  :  Drew Day <drewday@gmail.com>
+-- Stability   :  experimental
+-- Portability :  portable
+-- 
+-- Code adapted from: 
+-- <http://web.engr.oregonstate.edu/~erwig/meta/>
 --
+-- Documentation (and further updates in technique) forthcoming.
+----------------------------------------------------------------------------
 module A where
 
 
 
-----------------------------------------------------------------------
--- UTIdLIdTIdES: IIFunctor class
-----------------------------------------------------------------------
-
+-- |
+-- A standard Bifunctor, but with a Roman Numeral naming scheme:
+--
+-- [/II/] instead of @Bi@
+--
+-- [/fmapII/] instead of @bimap@
+--
+-- [/fmapLI/] instead of @first@
+--
+-- [/fmapIR/] instead of @second@
+--
+-- This is to remind us that the other column remains intact
+--   when focus on one (L or R).
+--
 class IIFunctor f where
   fmapII  ::  (a -> b) -> (c -> d) -> f a c -> f b d
   fmapLI  ::  (a -> b)             -> f a c -> f b c
@@ -19,6 +40,7 @@ class IIFunctor f where
   fmapLI f   = fmapII f  id
   fmapIR   g =                 fmapII id  g
 
+{-
 class IIIFunctor f where
   fmapIII   ::                     (d -> s -> b) -> (u -> c -> t) -> f u d -> f s c -> f b t
   fmapIIH   :: (IIFunctor f) =>         (s -> b) ->      (c -> t)          -> f s c -> f b t
@@ -31,7 +53,7 @@ class IIIFunctor f where
   fmapIIH   c r = fmapII c r
 --  fmapICI l c r = fmapLII l c . fmapIIH c r
   fmapLII l c   = fmapII l c
-
+-}
 
 
 ----------------------------------------------------------------------
@@ -71,9 +93,9 @@ toP  :: (t -> Bool) -> (t -> a) -> (t -> [b])           -> t -> Power   a b
 toP' :: (t -> Bool) -> (t -> (a,[b]))                   -> t -> Power   a b
 toB' :: (t -> Bool) -> (t -> (a, b ))                   -> t ->   II    a b
 
-fromU u f U_I_U                = u
+fromU u f U_I_U              = u
 fromU u f      (I x)         = f x
-fromB u f UII_U               = u
+fromB u f UII_U              = u
 fromB u f      (II x y)      = f x y
 fromT u f UIIVU              = u
 fromT u f      (IIV x y z)   = f x y z
@@ -91,6 +113,7 @@ toB' p f     x = if p x then UII_U  else II  y z  where (y, z) = f x
 data    I    a   = U_I_U | I     a
 data   II    a b = UII_U | II    a b
 data   IIV   a b = UIIVU | IIV   a b b
+{-
 data    IV   a b = U_IVU | IV    a b b b
 data    V    a b = U_V_U | V     a b b b b
 data    VI   a b = U_VIU | VI    a b b b b b
@@ -100,7 +123,7 @@ data    IX   a b = U_IXU |  IX   a b b b b b b b b
 data    X    a b = U_X_U |  X    a b b b b b b b b b
 data    XI   a b = U_XIU |  XI   a b b b b b b b b b b
 data   XII   a b = UXIIU |  XII  a b b b b b b b b b b b
-
+-}
 data Power   a b = UnitP | Many  a [b]
 
 
@@ -113,9 +136,10 @@ instance Functor (  II   a)  where fmap f      UII_U          = UII_U
 instance Functor (  IIV   a) where fmap f      UIIVU         = UIIVU
                                    fmap f     (IIV x y z)    =  IIV  x (f y) (f z)
 
+{-
 instance Functor (  IV    a) where fmap f      U_IVU        = U_IVU
                                    fmap f     (IV t x y z)   =   IV  t (f x) (f y) (f z)
-
+-}
 instance IIFunctor   II      where fmapII f g  UII_U          = UII_U
                                    fmapII f g (II x y)       =  II   (f x) (g y)
 
@@ -191,22 +215,17 @@ type JoinA a  g     = A    (II [a]  (g a) )
 ----------------------------------------------------------------------
 
 
--- Equip an A having linear constructor with a join view
---
 joinView  :: (Functor g) => A (II a t) g t -> A (II [      a]  t) g t
 maybeView :: (Functor g) => A (II a t) g t -> A (II (Maybe a)  t) g t
 
-joinView (A c d) = A c' d
-         where c' UII_U        = c UII_U
-               c' (II xs y) = foldr c'' y xs
-                   where c'' x y = c (II x y)
-
--- Extend A constructors to Maybe types, make As "maybeable"
+-- | Equip an A having linear constructor with a join view
 --
-maybeView (A c d) = A c' d
-          where c' UII_U              = c UII_U
-                c' (II Nothing y)  = y
-                c' (II (Just x) y) = c (II x y)
+joinView (A c d) = A c' d     where c' UII_U           = c UII_U
+                                    c' (II xs y)       = foldr c'' y xs
+                                                 where         c'' x ys = c (II x ys)
+maybeView (A c d) = A c' d    where c' UII_U           = c UII_U
+                                    c' (II Nothing  y) = y
+                                    c' (II (Just x) y) = c (II x y)
 
 
 ----------------------------------------------------------------------
@@ -214,8 +233,8 @@ maybeView (A c d) = A c' d
 ----------------------------------------------------------------------
 
 
--- A fold
---
+-- * Fold and Unfold
+
 fold      :: (Functor g)                       => (g u ->   u) -> A    s  g   t                                -> (t -> u)
 unfold    :: (Functor f, Functor g)            => (  t -> f t) -> A (f u) g   u                                -> (t -> u)
 trans     :: (Functor g, Functor h)            => (g u ->   r) -> A    s  g   t -> A    r  h u                 -> (t -> u)
@@ -224,17 +243,17 @@ via       :: (Functor g, Functor h, Functor i) =>                 A    s  g   t 
 
 fold   f a     = f     .     fmap (fold   f a  ) . des a
 unfold f a     =                                   con a .     fmap (unfold f a  ) . f
-trans  f a b   = con b . f . fmap (trans  f a b) . des a
 -- trans  f a b=                                   con b . f . fmap (trans  f a b) . des a
+trans  f a b   = con b . f . fmap (trans  f a b) . des a
+
 
 transit        = trans id
 via      a b c = transit b c . transit a b
 
 
--- fold f a@(A _ d) = f . map (fold f a) . d
 
-
--- Hylomorphisms in binary and triplet form (just for completeness)
+-- | 
+--   Hylomorphisms in binary and triplet form (just for completeness)
 --
 hylo  :: (Functor f) => (f b ->   b)                                                 -> (a -> f a) -> (a -> b)
 hylot :: (Functor f) => (f b -> g b) -> (g b ->   b)                                 -> (a -> f a) -> (a -> b)
@@ -246,9 +265,8 @@ hylot f c d = c . f .         fmap (hylot f c d) . d
 hhh g f c d = c . f . g .     fmap (hhh g f c d) . d
 h i g f c d = c . f . g . i . fmap (h i g f c d) . d
 
--- A streams
---
 
+-- ^ A simple Stream ADT
 stream :: (Functor g) => [SymA g t] -> t -> t
 stream [a,b]    = transit a b
 stream (a:b:as) = stream (b:as) . (transit a b) 

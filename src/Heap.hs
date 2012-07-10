@@ -1,6 +1,19 @@
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  Heap
+-- Copyright   :  (C) 2012 Drew Day
+--             :  (C) 1999 Martin Erwig
+-- License     :  BSD-style (see the file LICENSE)
 --
---  Pairing Heaps
+-- Maintainer  :  Drew Day <drewday@gmail.com>
+-- Stability   :  experimental
+-- Portability :  portable
+-- 
+-- Code adapted from: 
+-- <http://web.engr.oregonstate.edu/~erwig/meta/>
 --
+-- Documentation (and further updates in technique) forthcoming.
+----------------------------------------------------------------------------
 
 module Heap (Heap(..),
              empty,unit,insert,merge,
@@ -34,15 +47,13 @@ findMin   :: Ord a =>              Heap a -> a
 deleteMin :: Ord a =>              Heap a -> Heap a 
 splitMin  :: Ord a =>              Heap a -> (a,Heap a)
 
-empty = Empty
-
-unit x = Node x []
-
+empty      = Empty
+unit   x   = Node x []
 insert x h = merge (unit x) h
 
-merge h Empty = h
-merge Empty h = h
-merge h@(Node x hs) h'@(Node y hs') | x<y       = Node x (h':hs)
+merge h                 Empty                   = h
+merge    Empty      h'                          = h'
+merge h@(Node x hs) h'@(Node y hs') | x < y     = Node x (h':hs)
                                     | otherwise = Node y (h:hs')
 
 mergeAll []        = Empty
@@ -51,15 +62,15 @@ mergeAll (h:h':hs) = merge (merge h h') (mergeAll hs)
 
 isEmpty Empty = True
 isEmpty _     = False
-          
-findMin Empty      = error "Heap.findMin: empty heap"
-findMin (Node x _) = x
 
-deleteMin Empty       = Empty
+
+deleteMin  Empty      = Empty
 deleteMin (Node x hs) = mergeAll hs
 
-splitMin Empty       = error "Heap.splitMin: empty heap"
-splitMin (Node x hs) = (x,mergeAll hs)
+findMin    Empty      = error "Heap.findMin: empty heap"
+findMin   (Node x __) = x
+splitMin   Empty      = error "Heap.splitMin: empty heap"
+splitMin  (Node x hs) = (x,mergeAll hs)
 
 
 ----------------------------------------------------------------------
